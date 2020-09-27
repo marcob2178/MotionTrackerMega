@@ -68,7 +68,7 @@ public:
 
     bool isCruiseControl()
     {
-        return rTimeCounter > 1000;
+        return rTimeCounter > 500;
     }
 
     int getCruiseControlPower()

@@ -65,12 +65,20 @@ public:
 
     double getPitch()
     {
-        return euler.y() - offset_y;
+        double pitch = euler.y() - offset_y;
+         if (pitch < -180)
+            return pitch + 360;
+        else
+            return pitch;
     }
 
     double getRoll()
-    {
-        return euler.z() - offset_z;
+    { 
+        double roll = euler.z() - offset_z;
+        if (roll < -180)
+            return roll + 360;
+        else
+            return roll;
     }
 
     void update()

@@ -40,11 +40,12 @@ public:
     double getJumpingPower()
     {
 
-        return chestSensors->getLinZ() > 0 ? chestSensors->getLinZ() : 0;
+        return -chestSensors->getLinZ() /*> 0  ? chestSensors->getLinZ() : 0*/;
     }
+
     double isJumping()
     {
-        return getJumpingPower() > 5;
+        return getJumpingPower() > 10;
     }
     //===========================================================
     //  bend logic

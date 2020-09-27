@@ -52,7 +52,7 @@ public:
             }
         }
         myIMU->enableRotationVector(9);
-        myIMU->enableLinearAccelerometer(9); //Send data update every 50ms
+        myIMU->enableLinearAccelerometer(3); //Send data update every 50ms
         
         calibrate();
     }
@@ -103,8 +103,13 @@ public:
         // Serial.print(String(myIMU->dataAvailable()) + "\t");
         // Serial.println(String(myIMU->receivePacket()) + "\t");
 
-        if (!myIMU->dataAvailable())
-            Serial.println("false");
+        if (!myIMU->dataAvailable()){
+
+            Serial.println("dead");
+            //begin();
+
+
+        }
 
         // Serial.println(myIMU->dataAvailable());
         // myIMU->receivePacket();

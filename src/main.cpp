@@ -73,7 +73,7 @@ void setup()
   Serial.println("Started!");
   Wire.flush();
   Wire.begin();
-  Wire.setClock(100000); //Increase I2C data rate to 400kHz
+  Wire.setClock(400000); //Increase I2C data rate to 400kHz
 
   delay(500);
 
@@ -384,14 +384,18 @@ void translateBending()
 
 void translateCruiseControl()
 {
+  rightFoot->isWalking();
+  leftFoot->isWalking();
+
   if (rightFoot->isCruiseControl())
   {
-    left_y = map(rightFoot->getCruiseControlPower(), 10, 25, 25, 100);
+    left_y = map(rightFoot->getCruiseControlPower(), 10, 40, 25, 100);
     ychanged = true;
   }
-  else if (leftFoot->isCruiseControl())
+  
+   if (leftFoot->isCruiseControl())
   {
-    left_y = map(leftFoot->getCruiseControlPower(), 10, 25, 25, 100);
+    left_y = map(leftFoot->getCruiseControlPower(), 10, 40, 25, 100);
     ychanged = true;
   }
 }
@@ -400,12 +404,12 @@ void translateSideMoving()
 {
   if (rightFoot->isSideStep())
   {
-    left_x = map(rightFoot->getSidePower(), 200, 950, 0, 100);
+    left_x = map(rightFoot->getSidePower(), 200, 550, 0, 100);
     xchanged = true;
   }
   else if (leftFoot->isSideStep())
   {
-    left_x = -map(leftFoot->getSidePower(), 200, 950, 0, 100);
+    left_x = -map(leftFoot->getSidePower(), 200, 550, 0, 100);
     xchanged = true;
   }
 }
@@ -414,13 +418,13 @@ void translateBackMoving()
 {
   if (rightFoot->isStepBack())
   {
-    left_y = -map(rightFoot->getStepBackPower(), 200, 850, 0, 100);
+    left_y = -map(rightFoot->getStepBackPower(), 200, 550, 0, 100);
     ychanged = true;
   }
 
   else if (leftFoot->isStepBack())
   {
-    left_y = -map(leftFoot->getStepBackPower(), 200, 850, 0, 100);
+    left_y = -map(leftFoot->getStepBackPower(), 200, 550, 0, 100);
     ychanged = true;
   }
 }
@@ -459,7 +463,9 @@ void translateTheMovement()
 
   //jump
   if (chest->isJumping())
+  {
     right_button_state = 1;
+  }
   else
     right_button_state = 0;
 
