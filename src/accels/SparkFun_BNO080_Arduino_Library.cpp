@@ -181,7 +181,6 @@ bool BNO080::dataAvailable(void)
 		if (digitalRead(_int) == HIGH)
 			return (false);
 	}
-
 	if (receivePacket() == true)
 	{
 		//Check to see if this packet is a sensor reporting its data to us

@@ -9,7 +9,6 @@
 #include <Chest.h>
 #include <Foot.h>
 
-
 /*  
 TODO: 
 
@@ -74,8 +73,16 @@ void setup()
   Serial.println("Started!");
   Wire.flush();
   Wire.begin();
-  Wire.setClock(400000); //Increase I2C data rate to 400kHz
-  delay(1000);
+  Wire.setClock(100000); //Increase I2C data rate to 400kHz
+
+  delay(500);
+
+  SPI.setDataMode(SPI_MODE0);
+  SPI.setBitOrder(MSBFIRST);
+  SPI.setClockDivider(SPI_CLOCK_DIV8);
+  SPI.begin();
+
+  delay(500);
 
   Serial.println("Create instances!");
   chestAccel = new AccelBNO080();
@@ -106,6 +113,7 @@ void setup()
   delay(200);
   leftShoeAccel->begin();
   delay(200);
+  chestAccel->setIntPin(CHEST_ACCEL_INT_PIN);
   chestAccel->begin();
   delay(200);
 
@@ -162,7 +170,7 @@ void parseSerial()
       currentOutput = RIGHT_SHOE_OUTPUT;
     if (mess == 'l')
       currentOutput = LEFT_SHOE_OUTPUT;
-    if (mess == 'c') //beautiful
+    if (mess == 'c')
       currentOutput = CHEST_OUTPUT;
     if (mess == 'm')
       currentOutput = MOVEMENT_CHEST_OUTPUT;
@@ -180,6 +188,60 @@ void parseSerial()
 }
 
 //=================WALK DETECTION=======================
+
+//=====================================================================
+//  RAW data updating
+//=====================================================================
+
+void updateRawData()
+{
+  chestAccel->update();
+  rightShoeAccel->update();
+  leftShoeAccel->update();
+
+  rightSideFoot->update();
+  rightBackFoot->update();
+  leftSideFoot->update();
+  leftBackFoot->update();
+
+  switch (currentOutput)
+  {
+  case RIGHT_SHOE_OUTPUT:
+    printRawRightShoe();
+    break;
+  case LEFT_SHOE_OUTPUT:
+    printRawLeftShoe();
+    break;
+  case CHEST_OUTPUT:
+    printRawChest();
+    break;
+  }
+}
+
+//=====================================================================
+//  Movement Translating
+//=====================================================================
+
+/*
+the boneworks has:
+1) Moving with left joystick/left controller in all direction to walk (no press of the joystick button)
+2) Moving with left joystick/left controller in all direction while keeping pressed the left joystick button . This is to run
+3) jump = is the press of the right joystick
+4) crouch = is the moving of the right joystick down
+
+*/
+
+int left_x, left_y;
+int left_button_state;
+int right_x, right_y;
+int right_button_state;
+int delay_value = 0;
+
+bool xchanged = false;
+bool ychanged = false;
+
+//=====================================================================
+//  Walking
 
 //Tunable parameters - all defined for range 0-100
 float walk_sensitivity = 35;      //physical movement intensity to game walking speed
@@ -207,7 +269,7 @@ float walk_speed_max = 0;
 
 float walk_speed = 0;
 
-void walk_detector()
+void translateWalking()
 {
   float ax1 = rightShoeAccel->getLinX();
   float ay1 = rightShoeAccel->getLinY();
@@ -292,321 +354,29 @@ void walk_detector()
     float tgt_res = 2.5 - walk_speed * 0.025;
     walk_speed = (d_res - tgt_res) / d_res * 100;
   }
-}
 
-//=====================================================================
-//  RAW data updating
-//=====================================================================
-
-void updateRawData()
-{
-  chestAccel->update();
-  rightShoeAccel->update();
-  leftShoeAccel->update();
-
-  rightSideFoot->update();
-  rightBackFoot->update();
-  leftSideFoot->update();
-  leftBackFoot->update();
-
-  walk_detector();
-
-  switch (currentOutput)
+  if (walk_speed != 0)
   {
-  case RIGHT_SHOE_OUTPUT:
-    printRawRightShoe();
-    break;
-  case LEFT_SHOE_OUTPUT:
-    printRawLeftShoe();
-    break;
-  case CHEST_OUTPUT:
-    printRawChest();
-    break;
-  }
-}
-
-//=====================================================================
-//  Movement Translating
-//=====================================================================
-
-/*
-the boneworks has:
-1) Moving with left joystick/left controller in all direction to walk (no press of the joystick button)
-2) Moving with left joystick/left controller in all direction while keeping pressed the left joystick button . This is to run
-3) jump = is the press of the right joystick
-4) crouch = is the moving of the right joystick down
-
-*/
-
-int left_x, left_y;
-int left_button_state;
-int right_x, right_y;
-int right_button_state;
-int delay_value = 0;
-
-bool xchanged = false;
-bool ychanged = false;
-
-//=======================================================================================================================
-// #define TYPE_NOT_WALKING 0
-// #define TYPE_WALKING 1
-// #define TYPE_RUNNING 2
-
-// int walkType = TYPE_NOT_WALKING;
-// int prevRightTime = 0;
-// int prevLeftTime = 0;
-// bool lastLeft = false;
-// bool lastRight = false;
-// int steps = 0;
-// int step_timer = 0;
-// bool isWalk = false;
-// bool stepChanged = false;
-// int lastStepAccel = 0;
-// int prevAccel = 0;
-
-// long timeBetweenSteps = 0;
-// long stepsTimer = 0;
-
-// void translateWalkingWithTimings()
-// {
-
-//   bool curLeft = leftFoot->isWalking();
-//   bool curRight = rightFoot->isWalking();
-
-//   if ((!curLeft && lastLeft) || (!curRight && lastRight))
-//   {
-//     stepChanged = true;
-//     lastStepAccel = prevAccel;
-//     prevAccel = 0;
-
-//     // if (lastRight)
-//     //   timeBetweenSteps = prevRightTime;
-//     // else if (lastLeft)
-//     //   timeBetweenSteps = prevLeftTime;
-
-//     if (isWalk)
-//     {
-
-//       timeBetweenSteps = millis() - stepsTimer;
-//       if (timeBetweenSteps > 250)
-//         walkType = TYPE_WALKING;
-//       else if (timeBetweenSteps <= 250)
-//         walkType = TYPE_RUNNING;
-//     }
-
-//     stepsTimer = millis();
-//   }
-
-//   if (curRight || curLeft)
-//   {
-//     //=============================
-//     //count steps
-//     stepChanged = false;
-//     if ((curLeft && !lastLeft) || (curRight && !lastRight))
-//       steps++;
-
-//     prevRightTime = rightFoot->getStepTime();
-//     prevLeftTime = leftFoot->getStepTime();
-
-//     step_timer = 0;
-//   }
-
-//   isWalk = steps > 1;
-
-//   //=============================
-//   if ((steps > 0) && stepChanged)
-//   {
-//     left_y = lastStepAccel;
-//     ychanged = true;
-//     step_timer += CALCULATING_PERIOD;
-//     if (step_timer > 1000)
-//     {
-//       step_timer = 0;
-//       steps = 0;
-//       stepChanged = false;
-//       timeBetweenSteps = 0;
-//       walkType = TYPE_NOT_WALKING;
-//     }
-//   }
-
-//   lastLeft = curLeft;
-//   lastRight = curRight;
-
-//   //=============================
-
-//   // 1) is activatedby walking only
-//   // 2) is activated by walking and chest bent. and the more I bent the chest, the more or less the + moves.
-//   // 3) is activated by running nad maybe a fixed bigget angle of bent of the chest?
-
-//   //=============================
-
-//   if (isWalk)
-//   {
-//     if (timeBetweenSteps > 0 && timeBetweenSteps <= 400)
-//       left_y = 110;
-//     else if (timeBetweenSteps > 400 && timeBetweenSteps <= 600)
-//       left_y = 90;
-//     else if (timeBetweenSteps > 600 && timeBetweenSteps <= 800)
-//       left_y = 60;
-//     else if (timeBetweenSteps > 800 && timeBetweenSteps < 1000)
-//       left_y = 30;
-
-//     ychanged = true;
-
-//     // switch (walkType)
-//     // {
-//     // case TYPE_WALKING:
-//     //   if (chestAccel->getRoll() < -8)
-//     //   {
-//     //     left_y = ((chestAccel->getRoll()) * -3);
-//     //     ychanged = true;
-//     //   }
-//     //   else
-//     //   {
-//     //     left_y = 30;
-//     //     ychanged = true;
-//     //   }
-//     //   break;
-
-//     // case TYPE_RUNNING:
-
-//     //   left_y = 110;
-//     //   ychanged = true;
-//     //   break;
-//     // }
-//   }
-
-//   // Serial.print(rightFoot->getStepTime() + String("\t"));
-//   // Serial.print(rightFoot->getRawPower() + String("\t"));
-//   // Serial.print(leftFoot->getStepTime() + String("\t"));
-//   // Serial.print(leftFoot->getRawPower() + String("\t"));
-//   // Serial.print(chestAccel->getRoll() + String("\t"));
-
-//   // Serial.print(isWalk + String("\t"));
-//   // Serial.print(walkType + String("\t"));
-//   // Serial.print(left_y + String("\t"));
-//   // Serial.println(timeBetweenSteps);
-
-//   // Serial.print(steps + String("\t"));
-//   // Serial.print(stepChanged + String("\t"));
-//   // Serial.print(step_timer + String("\t"));
-//   // Serial.print(prevAccel + String("\t"));
-//   // Serial.println(lastStepAccel + String("\t"));
-// }
-
-//=======================================================================================================================
-#define TYPE_NOT_WALKING 0
-#define TYPE_WALKING 1
-#define TYPE_RUNNING 2
-
-int walkType = TYPE_NOT_WALKING;
-double prevRightPower = 0;
-double prevLeftPower = 0;
-bool lastLeft = false;
-bool lastRight = false;
-int steps = 0;
-int step_timer = 0;
-bool isWalk = false;
-bool stepChanged = false;
-int lastStepAccel = 0;
-
-void translateWalkingWithAcceleration()
-{
-
-  bool curLeft = leftFoot->isWalking();
-  bool curRight = rightFoot->isWalking();
-
-  if ((!curLeft && lastLeft) || (!curRight && lastRight))
-  {
-    if (lastRight)
-      lastStepAccel = prevRightPower;
-    else if (lastLeft)
-      lastStepAccel = prevLeftPower;
-
-    prevRightPower = 0;
-    prevLeftPower = 0;
-
-    // lastStepAccel = left_y;
-    //ychanged = true;
-
-    stepChanged = true;
-  }
-
-  if (curRight || curLeft)
-  {
-    //=============================
-    //count steps
-    stepChanged = false;
-    if ((curLeft && !lastLeft) || (curRight && !lastRight))
-      steps++;
-
-    prevRightPower = rightFoot->getDistance() * 100 > prevRightPower ? rightFoot->getDistance() * 100 : prevRightPower;
-    prevLeftPower = leftFoot->getDistance() * 100 > prevLeftPower ? leftFoot->getDistance() * 100 : prevLeftPower;
-
-    step_timer = 0;
-  }
-
-  isWalk = steps > 1;
-
-  //=============================
-  if ((steps > 0))
-  {
-    left_y = lastStepAccel;
+    left_y = walk_speed;
     ychanged = true;
-    step_timer += CALCULATING_PERIOD;
-    if (step_timer > 1000)
-    {
-      step_timer = 0;
-      steps = 0;
-      stepChanged = false;
-      walkType = TYPE_NOT_WALKING;
-    }
   }
-
-  lastLeft = curLeft;
-  lastRight = curRight;
-
-  //=============================
-
-  // Serial.print(rightFoot->getStepTime() + String("\t"));
-  // Serial.print(rightFoot->getRawPower() + String("\t"));
-  // Serial.print(prevRightPower + String("\t"));
-  // Serial.print(leftFoot->getStepTime() + String("\t"));
-  // Serial.print(leftFoot->getRawPower() + String("\t"));
-  // Serial.print(prevLeftPower + String("\t"));
-
-  // Serial.print(isWalk + String("\t"));
-
-  // Serial.print(isWalk + String("\t"));
-  // Serial.print(walkType + String("\t"));
-  // Serial.print(left_y + String("\t"));
-  // Serial.print(timeBetweenSteps);
-
-  // Serial.print(steps + String("\t"));
-  // Serial.print(stepChanged + String("\t"));
-  // Serial.print(step_timer + String("\t"));
-  // Serial.print(prevAccel + String("\t"));
-  // Serial.print(lastStepAccel + String("\t"));
-// 
-  // Serial.println();
 }
-//=======================================================================================================================
 
 void translateBending()
 {
   if (chest->isBending())
   {
-    delay_value = 0;
+    //if(chestAccel->getRoll() <CHEST_BACKWARD_MIN)
     if (chestAccel->getRoll() < 0)
-      left_y = map(chestAccel->getRoll(), 0, CHEST_BACKWARD_MAX, 0, -100);
+      left_y = map(-chestAccel->getRoll(), 0, CHEST_BACKWARD_MAX, 0, -100);
     else
-      left_y = map(chestAccel->getRoll(), 0, -CHEST_FORWARD_MAX, 0, 100);
+      left_y = map(-chestAccel->getRoll(), 0, -CHEST_FORWARD_MAX, 0, 100);
 
     //calculating of right-left/horizontal movement
     if (chestAccel->getPitch() < 0)
-      left_x = map(chestAccel->getPitch(), 0, CHEST_RIGHT_MAX, 0, 100);
+      left_x = map(-chestAccel->getPitch(), 0, CHEST_RIGHT_MAX, 0, 100);
     else
-      left_x = map(chestAccel->getPitch(), 0, -CHEST_LEFT_MAX, 0, -100);
+      left_x = map(-chestAccel->getPitch(), 0, -CHEST_LEFT_MAX, 0, -100);
     xchanged = true;
     ychanged = true;
   }
@@ -660,12 +430,9 @@ void translateTheMovement()
   xchanged = false;
   ychanged = false;
   //bending control
-  //translateBending();
+  translateBending();
   //walking
-  translateWalkingWithAcceleration();
-
-  left_y = walk_speed;
-  ychanged = true;
+  translateWalking();
 
   //cruise control
   translateCruiseControl();

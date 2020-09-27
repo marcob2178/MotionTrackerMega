@@ -98,12 +98,7 @@ public:
         pin_button = _pin_button;
         pinMode(pin_button, OUTPUT);
         pot0 = new MCP4261(pin_cs);
-        // Setup SPI communications
-        SPI.setDataMode(SPI_MODE0);
-        SPI.setBitOrder(MSBFIRST);
-        SPI.setClockDivider(SPI_CLOCK_DIV8);
-        SPI.begin();
-
+        
         // Initialize potentiometers
         pot0->initialize();
 

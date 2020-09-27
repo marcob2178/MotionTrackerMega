@@ -91,8 +91,8 @@ public:
     double getBendingPower()
     {
 
-        int x = chestSensors->getPitch();
-        int y = chestSensors->getRoll();
+        double x = chestSensors->getPitch();
+        double y = chestSensors->getRoll();
 
         return sqrt((x * x) + (y * y));
     }

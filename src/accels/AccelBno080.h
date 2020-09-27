@@ -9,6 +9,7 @@ class AccelBNO080 : public Accelerometer
 
 private:
     BNO080 *myIMU;
+    int pin = 255;
 
     float offset_roll, offset_pitch;
 
@@ -27,26 +28,32 @@ public:
     void calibrate()
     {
 
-        if (myIMU->dataAvailable())
-            setOffsets(((myIMU->getRoll()) * 180.0 / PI), ((myIMU->getPitch()) * 180.0 / PI));
+        update();
+        setOffsets(((myIMU->getRoll()) * 180.0 / PI), ((myIMU->getPitch()) * 180.0 / PI));
+    }
+
+    void setIntPin(int _pin)
+    {
+
+        pin = _pin;
     }
 
     void begin()
     {
-        if (!myIMU->begin())
+        if (!myIMU->begin(BNO080_DEFAULT_ADDRESS, Wire, pin))
         {
             Serial.println("BNO080 not detected at default I2C address. Check your jumpers and the hookup guide. Trying again...");
             delay(1000);
 
-            if (!myIMU->begin())
+            if (!myIMU->begin(BNO080_DEFAULT_ADDRESS, Wire, pin))
             {
                 Serial.println("Something wrong, freezing....");
                 return;
             }
         }
-        myIMU->enableRotationVector(10);
-        myIMU->enableAccelerometer(10);
-        myIMU->enableLinearAccelerometer(10); //Send data update every 50ms
+        myIMU->enableRotationVector(9);
+        myIMU->enableLinearAccelerometer(9); //Send data update every 50ms
+        
         calibrate();
     }
 
@@ -68,18 +75,39 @@ public:
     }
     double getPitch()
     {
-        return ((myIMU->getPitch()) * 180.0 / PI) - offset_pitch;
+        double pitch = ((myIMU->getPitch()) * 180.0 / PI) - offset_pitch;
+
+        if (pitch < -180)
+            return pitch + 360;
+        else
+            return pitch;
         //return myIMU->getPitch();
+
+        
     }
     double getRoll()
     {
-        return ((myIMU->getRoll()) * 180.0 / PI) - offset_roll;
+        double roll = ((myIMU->getRoll()) * 180.0 / PI) - offset_roll;
+
+        if (roll < -180)
+            return roll + 360;
+        else
+            return roll;
         // return myIMU->getRoll();
     }
 
+
+
     void update()
     {
-        myIMU->dataAvailable();
+        // Serial.print(String(myIMU->dataAvailable()) + "\t");
+        // Serial.println(String(myIMU->receivePacket()) + "\t");
+
+        if (!myIMU->dataAvailable())
+            Serial.println("false");
+
+        // Serial.println(myIMU->dataAvailable());
+        // myIMU->receivePacket();
     }
 };
 
